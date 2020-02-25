@@ -5,7 +5,8 @@ import torch
 from torch.autograd import Function
 from torchvision import models
 
-class FeatureExtractor():
+
+class FeatureExtractor:
     """ Class for extracting activations and 
     registering gradients from targetted intermediate layers """
 
@@ -28,7 +29,7 @@ class FeatureExtractor():
         return outputs, x
 
 
-class ModelOutputs():
+class ModelOutputs:
     """ Class for making a forward pass, and getting:
     1. The network output.
     2. Activations from intermeddiate targetted layers.
@@ -56,8 +57,7 @@ def preprocess_image(img):
     for i in range(3):
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] - means[i]
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] / stds[i]
-    preprocessed_img = \
-        np.ascontiguousarray(np.transpose(preprocessed_img, (2, 0, 1)))
+    preprocessed_img = np.ascontiguousarray(np.transpose(preprocessed_img, (2, 0, 1)))
     preprocessed_img = torch.from_numpy(preprocessed_img)
     preprocessed_img.unsqueeze_(0)
     input = preprocessed_img.requires_grad_(True)
@@ -125,11 +125,12 @@ class GradCam:
 
 
 class GuidedBackpropReLU(Function):
-
     @staticmethod
     def forward(self, input):
         positive_mask = (input > 0).type_as(input)
-        output = torch.addcmul(torch.zeros(input.size()).type_as(input), input, positive_mask)
+        output = torch.addcmul(
+            torch.zeros(input.size()).type_as(input), input, positive_mask
+        )
         self.save_for_backward(input, output)
         return output
 
@@ -140,9 +141,13 @@ class GuidedBackpropReLU(Function):
 
         positive_mask_1 = (input > 0).type_as(grad_output)
         positive_mask_2 = (grad_output > 0).type_as(grad_output)
-        grad_input = torch.addcmul(torch.zeros(input.size()).type_as(input),
-                                   torch.addcmul(torch.zeros(input.size()).type_as(input), grad_output,
-                                                 positive_mask_1), positive_mask_2)
+        grad_input = torch.addcmul(
+            torch.zeros(input.size()).type_as(input),
+            torch.addcmul(
+                torch.zeros(input.size()).type_as(input), grad_output, positive_mask_1
+            ),
+            positive_mask_2,
+        )
 
         return grad_input
 
@@ -157,7 +162,7 @@ class GuidedBackpropReLUModel:
 
         # replace ReLU with GuidedBackpropReLU
         for idx, module in self.model.features._modules.items():
-            if module.__class__.__name__ == 'ReLU':
+            if module.__class__.__name__ == "ReLU":
                 self.model.features._modules[idx] = GuidedBackpropReLU.apply
 
     def forward(self, input):
@@ -192,10 +197,15 @@ class GuidedBackpropReLUModel:
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--use-cuda', action='store_true', default=False,
-                        help='Use NVIDIA GPU acceleration')
-    parser.add_argument('--image-path', type=str, default='./examples/both.png',
-                        help='Input image path')
+    parser.add_argument(
+        "--use-cuda",
+        action="store_true",
+        default=False,
+        help="Use NVIDIA GPU acceleration",
+    )
+    parser.add_argument(
+        "--image-path", type=str, default="./examples/both.png", help="Input image path"
+    )
     args = parser.parse_args()
     args.use_cuda = args.use_cuda and torch.cuda.is_available()
     if args.use_cuda:
@@ -205,6 +215,7 @@ def get_args():
 
     return args
 
+
 def deprocess_image(img):
     """ see https://github.com/jacobgil/keras-grad-cam/blob/master/grad-cam.py#L65 """
     img = img - np.mean(img)
@@ -212,10 +223,10 @@ def deprocess_image(img):
     img = img * 0.1
     img = img + 0.5
     img = np.clip(img, 0, 1)
-    return np.uint8(img*255)
+    return np.uint8(img * 255)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """ python grad_cam.py <path_to_image>
     1. Loads an image with opencv.
     2. Preprocesses it for VGG19 and converts to a pytorch variable.
@@ -228,8 +239,11 @@ if __name__ == '__main__':
     # Can work with any model, but it assumes that the model has a
     # feature method, and a classifier method,
     # as in the VGG models in torchvision.
-    grad_cam = GradCam(model=models.vgg19(pretrained=True), \
-                       target_layer_names=["35"], use_cuda=args.use_cuda)
+    grad_cam = GradCam(
+        model=models.vgg19(pretrained=True),
+        target_layer_names=["35"],
+        use_cuda=args.use_cuda,
+    )
 
     img = cv2.imread(args.image_path, 1)
     img = np.float32(cv2.resize(img, (224, 224))) / 255
@@ -242,12 +256,14 @@ if __name__ == '__main__':
 
     show_cam_on_image(img, mask)
 
-    gb_model = GuidedBackpropReLUModel(model=models.vgg19(pretrained=True), use_cuda=args.use_cuda)
+    gb_model = GuidedBackpropReLUModel(
+        model=models.vgg19(pretrained=True), use_cuda=args.use_cuda
+    )
     gb = gb_model(input, index=target_index)
     gb = gb.transpose((1, 2, 0))
     cam_mask = cv2.merge([mask, mask, mask])
-    cam_gb = deprocess_image(cam_mask*gb)
+    cam_gb = deprocess_image(cam_mask * gb)
     gb = deprocess_image(gb)
 
-    cv2.imwrite('gb.jpg', gb)
-    cv2.imwrite('cam_gb.jpg', cam_gb)
+    cv2.imwrite("gb.jpg", gb)
+    cv2.imwrite("cam_gb.jpg", cam_gb)
