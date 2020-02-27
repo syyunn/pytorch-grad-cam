@@ -58,7 +58,8 @@ def preprocess_image(img):
     for i in range(3):
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] - means[i]
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] / stds[i]
-    preprocessed_img = np.ascontiguousarray(np.transpose(preprocessed_img, (2, 0, 1)))
+    preprocessed_img = np.ascontiguousarray(
+        np.transpose(preprocessed_img, (2, 0, 1)))
     preprocessed_img = torch.from_numpy(preprocessed_img)
     preprocessed_img.unsqueeze_(0)
     input = preprocessed_img.requires_grad_(True)
@@ -92,7 +93,7 @@ class GradCam:
         else:
             features, output = self.extractor(input)
 
-        if index == None:
+        if index is None:
             index = np.argmax(output.cpu().data.numpy())
 
         one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
@@ -145,7 +146,8 @@ class GuidedBackpropReLU(Function):
         grad_input = torch.addcmul(
             torch.zeros(input.size()).type_as(input),
             torch.addcmul(
-                torch.zeros(input.size()).type_as(input), grad_output, positive_mask_1
+                torch.zeros(input.size()).type_as(input), grad_output,
+                positive_mask_1
             ),
             positive_mask_2,
         )
@@ -205,7 +207,8 @@ def get_args():
         help="Use NVIDIA GPU acceleration",
     )
     parser.add_argument(
-        "--image-path", type=str, default="./examples/both.png", help="Input image path"
+        "--image-path", type=str, default="./examples/both.png",
+        help="Input image path"
     )
     args = parser.parse_args()
     args.use_cuda = args.use_cuda and torch.cuda.is_available()
