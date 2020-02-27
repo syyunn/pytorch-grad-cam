@@ -8,7 +8,7 @@ from torchvision import models
 
 class FeatureExtractor:
     """ Class for extracting activations and 
-    registering gradients from targetted intermediate layers """
+    registering gradients from targeted intermediate layers """
 
     def __init__(self, model, target_layers):
         self.model = model
