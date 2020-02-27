@@ -25,19 +25,20 @@ class FeatureExtractor:
             x = module(x)
             if name in self.target_layers:
                 x.register_hook(self.save_gradient)
-                outputs += [x]
+                outputs += [x]  # var outputs collects target-activations
         return outputs, x
 
 
 class ModelOutputs:
     """ Class for making a forward pass, and getting:
     1. The network output.
-    2. Activations from intermeddiate targetted layers.
-    3. Gradients from intermeddiate targetted layers. """
+    2. Activations from intermediate targeted layers.
+    3. Gradients from intermediate targeted layers. """
 
     def __init__(self, model, target_layers):
         self.model = model
-        self.feature_extractor = FeatureExtractor(self.model.features, target_layers)
+        self.feature_extractor = FeatureExtractor(self.model.features,
+                                                  target_layers)
 
     def get_gradients(self):
         return self.feature_extractor.gradients
