@@ -84,8 +84,8 @@ class GradCam:
 
         self.extractor = ModelOutputs(self.model, target_layer_names)
 
-    def forward(self, input):
-        return self.model(input)
+    # def forward(self, input):
+    #     return self.model(input)
 
     def __call__(self, input, index=None):
         if self.cuda:
