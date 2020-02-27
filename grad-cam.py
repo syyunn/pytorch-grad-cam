@@ -84,8 +84,8 @@ class GradCam:
 
         self.extractor = ModelOutputs(self.model, target_layer_names)
 
-    def forward(self, input):
-        return self.model(input)
+    # def forward(self, input):
+    #     return self.model(input)
 
     def __call__(self, input, index=None):
         if self.cuda:
@@ -260,14 +260,14 @@ if __name__ == "__main__":
 
     show_cam_on_image(img, mask)
 
-    gb_model = GuidedBackpropReLUModel(
-        model=models.vgg19(pretrained=True), use_cuda=args.use_cuda
-    )
-    gb = gb_model(input, index=target_index)
-    gb = gb.transpose((1, 2, 0))
-    cam_mask = cv2.merge([mask, mask, mask])
-    cam_gb = deprocess_image(cam_mask * gb)
-    gb = deprocess_image(gb)
-
-    cv2.imwrite("gb.jpg", gb)
-    cv2.imwrite("cam_gb.jpg", cam_gb)
+    # gb_model = GuidedBackpropReLUModel(
+    #     model=models.vgg19(pretrained=True), use_cuda=args.use_cuda
+    # )
+    # gb = gb_model(input, index=target_index)
+    # gb = gb.transpose((1, 2, 0))
+    # cam_mask = cv2.merge([mask, mask, mask])
+    # cam_gb = deprocess_image(cam_mask * gb)
+    # gb = deprocess_image(gb)
+    #
+    # cv2.imwrite("gb.jpg", gb)
+    # cv2.imwrite("cam_gb.jpg", cam_gb)
