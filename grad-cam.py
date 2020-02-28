@@ -16,16 +16,19 @@ class FeatureExtractor:
         self.gradients = []
 
     def save_gradient(self, grad):
+        # print("grad", grad)
         self.gradients.append(grad)
 
     def __call__(self, x):
         outputs = []
         self.gradients = []
         for name, module in self.model._modules.items():
-            x = module(x)
+            x = module(x)  # the output x corresponds to A_ij_k where k is
+            # the k-th of 512 channel maps. (512 is the final penultimate layer
             if name in self.target_layers:
+                print("x", x)
                 x.register_hook(self.save_gradient)
-                outputs += [x]  # var outputs collects target-activations
+                outputs += [x]  # outputs collects target-activations
         return outputs, x
 
 
@@ -71,7 +74,7 @@ def show_cam_on_image(img, mask):
     heatmap = np.float32(heatmap) / 255
     cam = heatmap + np.float32(img)
     cam = cam / np.max(cam)
-    cv2.imwrite("cam.jpg", np.uint8(255 * cam))
+    cv2.imwrite("cam_feature_zero_grad_only.jpg", np.uint8(255 * cam))
 
 
 class GradCam:
@@ -83,11 +86,13 @@ class GradCam:
             self.model = model.cuda()
 
         self.extractor = ModelOutputs(self.model, target_layer_names)
+        # our model runs in the extractor, not in GradCam
 
     # def forward(self, input):
     #     return self.model(input)
 
     def __call__(self, input, index=None):
+        # index = None, returns the highest scored class
         if self.cuda:
             features, output = self.extractor(input.cuda())
         else:
@@ -97,6 +102,7 @@ class GradCam:
             index = np.argmax(output.cpu().data.numpy())
 
         one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+        # current class is 1000, thus output.size()[-1] = 1000
         one_hot[0][index] = 1
         one_hot = torch.from_numpy(one_hot).requires_grad_(True)
         if self.cuda:
@@ -104,23 +110,29 @@ class GradCam:
         else:
             one_hot = torch.sum(one_hot * output)
 
+        # We clear all the remaining gradients in the graph
         self.model.features.zero_grad()
-        self.model.classifier.zero_grad()
+        # self.model.classifier.zero_grad()
+        # Then only calculates the one-hots gradients
         one_hot.backward(retain_graph=True)
 
         grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
+        # get_gradients() returns only one element list
 
-        target = features[-1]
-        target = target.cpu().data.numpy()[0, :]
+        target = features[-1]  # list typed features contains only one element
+        target = target.cpu().data.numpy()[0, :]  # shape changes from [1,
+        # 512,14,14] -> to [512, 14, 14]
 
-        weights = np.mean(grads_val, axis=(2, 3))[0, :]
+        weights = np.mean(grads_val, axis=(2, 3))[0, :]  # weights means the
+        # importance of each 512 channel
         cam = np.zeros(target.shape[1:], dtype=np.float32)
 
         for i, w in enumerate(weights):
             cam += w * target[i, :, :]
 
-        cam = np.maximum(cam, 0)
-        cam = cv2.resize(cam, (224, 224))
+        cam = np.maximum(cam, 0)  # cam.shape = [14, 14]
+        cam = cv2.resize(cam, (224, 224))  # cam.shape = [224, 224] where
+        # 224 is the img size
         cam = cam - np.min(cam)
         cam = cam / np.max(cam)
         return cam
@@ -188,7 +200,7 @@ class GuidedBackpropReLUModel:
         else:
             one_hot = torch.sum(one_hot * output)
 
-        # self.model.features.zero_grad()
+        self.model.features.zero_grad()
         # self.model.classifier.zero_grad()
         one_hot.backward(retain_graph=True)
 
